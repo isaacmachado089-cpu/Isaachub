@@ -1,0 +1,124 @@
+--[[
+    IsaacHub - FPS Optimizer
+    Otimização LOCAL: não afeta outros jogadores.
+]]
+
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- Rayfield
+local Rayfield = loadstring(game:HttpGet(
+    "https://sirius.menu/rayfield"
+))()
+
+local Window = Rayfield:CreateWindow({
+    Name = "IsaacHub",
+    LoadingTitle = "IsaacHub",
+    LoadingSubtitle = "FPS Optimizer",
+    ConfigurationSaving = {
+        Enabled = false
+    }
+})
+
+local Tab = Window:CreateTab("Performance", 4483362458)
+
+local optimized = false
+local saved = {}
+
+local function optimize()
+    if optimized then return end
+    optimized = true
+
+    -- Guarda configurações
+    saved.GlobalShadows = Lighting.GlobalShadows
+    saved.FogEnd = Lighting.FogEnd
+
+    -- Iluminação mais leve
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 100000
+
+    -- Remove/reduz efeitos visuais locais
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("ParticleEmitter")
+        or obj:IsA("Trail")
+        or obj:IsA("Beam")
+        or obj:IsA("Smoke")
+        or obj:IsA("Fire")
+        or obj:IsA("Sparkles") then
+
+            saved[obj] = {
+                Enabled = obj.Enabled
+            }
+
+            obj.Enabled = false
+        end
+    end
+
+    -- Qualidade gráfica mínima
+    pcall(function()
+        settings().Rendering.QualityLevel =
+            Enum.QualityLevel.Level01
+    end)
+end
+
+local function restore()
+    if not optimized then return end
+
+    optimized = false
+
+    Lighting.GlobalShadows = saved.GlobalShadows
+    Lighting.FogEnd = saved.FogEnd
+
+    for obj, data in pairs(saved) do
+        if typeof(obj) == "Instance"
+        and obj.Parent
+        and data.Enabled ~= nil then
+            pcall(function()
+                obj.Enabled = data.Enabled
+            end)
+        end
+    end
+
+    table.clear(saved)
+end
+
+Tab:CreateToggle({
+    Name = "FPSKILL",
+    CurrentValue = false,
+    Flag = "FPSKILL",
+    Callback = function(Value)
+        if Value then
+            optimize()
+        else
+            restore()
+        end
+    end,
+})
+
+-- Contador de FPS
+local fpsLabel = Tab:CreateLabel("FPS: --")
+
+local frames = 0
+local lastTime = tick()
+
+RunService.RenderStepped:Connect(function()
+    frames += 1
+
+    local now = tick()
+
+    if now - lastTime >= 1 then
+        fpsLabel:Set("FPS: " .. frames)
+        frames = 0
+        lastTime = now
+    end
+end)
+
+Rayfield:Notify({
+    Title = "IsaacHub",
+    Content = "FPS Optimizer carregado!",
+    Duration = 4
+})
